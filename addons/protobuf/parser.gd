@@ -1979,10 +1979,10 @@ class Translator:
 			var cls_pref : String = ""
 			cls_pref += tabulate("class " + class_table[class_index].name + ":\n", nesting)
 			nesting += 1
-			cls_pref += tabulate("func _init():\n", nesting)
+			cls_pref += tabulate("func _init(): -> void\n", nesting)
 			text += cls_pref
 			nesting += 1
-			text += tabulate("var service\n", nesting)
+			text += tabulate("var service : Variant\n", nesting)
 			text += tabulate("\n", nesting)
 			var field_text : String = ""
 			for i in range(field_table.size()):
@@ -1992,7 +1992,7 @@ class Translator:
 					field_text += generate_field(i, nesting - 1)
 					field_text += tabulate("\n", nesting - 1)
 			nesting -= 1
-			text += tabulate("var data = {}\n", nesting)
+			text += tabulate("var data := {}\n", nesting)
 			text += tabulate("\n", nesting)
 			text += field_text
 			for j in range(class_table.size()):
@@ -2031,12 +2031,12 @@ class Translator:
 		nesting -= 1
 		text += tabulate("func from_bytes(bytes : PackedByteArray, offset : int = 0, limit : int = -1) -> int:\n", nesting)
 		nesting += 1
-		text += tabulate("var cur_limit = bytes.size()\n", nesting)
+		text += tabulate("var cur_limit := bytes.size()\n", nesting)
 		text += tabulate("if limit != -1:\n", nesting)
 		nesting += 1
 		text += tabulate("cur_limit = limit\n", nesting)
 		nesting -= 1
-		text += tabulate("var result = PBPacker.unpack_message(data, bytes, offset, cur_limit)\n", nesting)
+		text += tabulate("var result := PBPacker.unpack_message(data, bytes, offset, cur_limit)\n", nesting)
 		text += tabulate("if result == cur_limit:\n", nesting)
 		nesting += 1
 		text += tabulate("if PBPacker.check_required(data):\n", nesting)
