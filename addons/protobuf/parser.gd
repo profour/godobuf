@@ -1979,7 +1979,7 @@ class Translator:
 			var cls_pref : String = ""
 			cls_pref += tabulate("class " + class_table[class_index].name + ":\n", nesting)
 			nesting += 1
-			cls_pref += tabulate("func _init(): -> void\n", nesting)
+			cls_pref += tabulate("func _init() -> void:\n", nesting)
 			text += cls_pref
 			nesting += 1
 			text += tabulate("var service : Variant\n", nesting)
