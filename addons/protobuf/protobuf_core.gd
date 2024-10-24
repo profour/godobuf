@@ -376,7 +376,7 @@ class PBPacker:
 		else:
 			return data
 
-	static func unpack_field(bytes : PackedByteArray, offset : int, field : PBField, type : int, message_func_ref : Callable) -> int:
+	static func unpack_field(bytes : PackedByteArray, offset : int, field : PBField, type : int, message_func_ref : Variant) -> int:
 		if field.rule == PB_RULE.REPEATED && type != PB_TYPE.LENGTHDEL && field.option_packed:
 			var count_bytes := isolate_varint(bytes, offset)
 			if count_bytes.size() > 0:
