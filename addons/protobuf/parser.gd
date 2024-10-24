@@ -1837,7 +1837,7 @@ class Translator:
 				nesting -= 1
 				text += tabulate("func add_" + f.name + "() -> " + the_class_name + ":\n", nesting)
 				nesting += 1
-				text += tabulate("var element = " + the_class_name + ".new()\n", nesting)
+				text += tabulate("var element := " + the_class_name + ".new()\n", nesting)
 				text += tabulate(varname + ".value.append(element)\n", nesting)
 				text += tabulate("return element\n", nesting)
 			else:
@@ -1879,7 +1879,7 @@ class Translator:
 					text += tabulate("func add_empty_" + f.name + "()" + return_type + ":\n", nesting)
 					nesting += 1
 					text += generate_group_clear(field_index, nesting)
-					text += tabulate("var element = " + the_class_name + ".new()\n", nesting)
+					text += tabulate("var element := " + the_class_name + ".new()\n", nesting)
 					text += tabulate(varname + ".value.append(element)\n", nesting)
 					text += tabulate("return element\n", nesting)
 					nesting -= 1
@@ -1895,7 +1895,7 @@ class Translator:
 						text += tabulate("idx = i\n", nesting)
 						text += tabulate("break\n", nesting)
 						nesting -= 2
-						text += tabulate("var element = " + the_class_name + ".new()\n", nesting)
+						text += tabulate("var element := " + the_class_name + ".new()\n", nesting)
 						text += tabulate("element.set_key(a_key)\n", nesting)
 						text += tabulate("if idx != -1:\n", nesting)
 						nesting += 1
@@ -1918,7 +1918,7 @@ class Translator:
 						text += tabulate("idx = i\n", nesting)
 						text += tabulate("break\n", nesting)
 						nesting -= 2
-						text += tabulate("var element = " + the_class_name + ".new()\n", nesting)
+						text += tabulate("var element := " + the_class_name + ".new()\n", nesting)
 						text += tabulate("element.set_key(a_key)\n", nesting)
 						text += tabulate("element.set_value(a_value)\n", nesting)
 						text += tabulate("if idx != -1:\n", nesting)
