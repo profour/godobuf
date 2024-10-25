@@ -383,7 +383,7 @@ class PBPacker:
 				offset += count_bytes.size()
 				var count := unpack_varint(count_bytes)
 				if type == PB_TYPE.VARINT:
-					var val : int
+					var val : Variant
 					var counter := offset + count
 					while offset < counter:
 						var value_bytes := isolate_varint(bytes, offset)
