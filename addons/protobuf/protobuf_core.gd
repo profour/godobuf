@@ -226,6 +226,7 @@ class PBPacker:
 		var i: int = varint_bytes.size() - 1
 		while i > -1:
 			value = (value << 7) | (varint_bytes[i] & 0x7F)
+			i -= 1
 		return value
 
 	static func pack_type_tag(type : int, tag : int) -> PackedByteArray:
