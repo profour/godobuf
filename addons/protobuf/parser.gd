@@ -1535,6 +1535,8 @@ class Semantic:
 				if f.type_name[0] == ".":
 					f.type_class_id = find_full_class_name(f.type_name)
 				else:
+					# Reset result from previous assignment, that can be incorrect because of merging of imports
+					f.type_class_id = -1
 					var splited_name : Array = f.type_name.split(".", false)
 					var cur_class_index : int = f.parent_class_id
 					var exit : bool = false
@@ -1810,7 +1812,6 @@ class Translator:
 		if f.field_type == Analysis.FIELD_TYPE.MESSAGE:
 			var the_class_name : String = class_table[f.type_class_id].parent_name + "." + class_table[f.type_class_id].name
 			the_class_name = the_class_name.substr(1, the_class_name.length() - 1)
-			text += generate_has_oneof(field_index, nesting)
 			if f.qualificator != Analysis.FIELD_QUALIFICATOR.OPTIONAL:
 				text += generate_has_oneof(field_index, nesting)
 			if f.qualificator == Analysis.FIELD_QUALIFICATOR.REPEATED:
@@ -1833,7 +1834,7 @@ class Translator:
 			nesting += 1
 			text += tabulate("data[" + str(f.tag) + "].state = PB_SERVICE_STATE.UNFILLED\n", nesting)
 			if f.qualificator == Analysis.FIELD_QUALIFICATOR.REPEATED:
-				text += tabulate(varname + ".value = []\n", nesting)
+				text += tabulate(varname + ".value.clear()\n", nesting)
 				nesting -= 1
 				text += tabulate("func add_" + f.name + "() -> " + the_class_name + ":\n", nesting)
 				nesting += 1
@@ -1959,7 +1960,7 @@ class Translator:
 			nesting += 1
 			text += tabulate("data[" + str(f.tag) + "].state = PB_SERVICE_STATE.UNFILLED\n", nesting)
 			if f.qualificator == Analysis.FIELD_QUALIFICATOR.REPEATED:
-				text += tabulate(varname + ".value = []\n", nesting)
+				text += tabulate(varname + ".value.clear()\n", nesting)
 				nesting -= 1
 				text += tabulate("func add_" + f.name + "(value" + argument_type + ") -> void:\n", nesting)
 				nesting += 1
@@ -2005,8 +2006,18 @@ class Translator:
 		elif class_table[class_index].type == Analysis.CLASS_TYPE.ENUM:
 			text += tabulate("enum " + class_table[class_index].name + " {\n", nesting)
 			nesting += 1
+
+			var expected_prefix = class_table[class_index].name.to_snake_case().to_upper() + "_"
+			var all_have_prefix = true
 			for en in range(class_table[class_index].values.size()):
-				var enum_val = class_table[class_index].values[en].name + " = " + class_table[class_index].values[en].value
+				var value_name = class_table[class_index].values[en].name
+				all_have_prefix = all_have_prefix and value_name.begins_with(expected_prefix) and value_name != expected_prefix
+
+			for en in range(class_table[class_index].values.size()):
+				var value_name = class_table[class_index].values[en].name
+				if all_have_prefix:
+					value_name = value_name.substr(expected_prefix.length())
+				var enum_val = value_name + " = " + class_table[class_index].values[en].value
 				if en == class_table[class_index].values.size() - 1:
 					text += tabulate(enum_val + "\n", nesting)
 				else:
