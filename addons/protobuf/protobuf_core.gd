@@ -190,7 +190,7 @@ class PBPacker:
 			else:
 				varint.append(b)
 				break
-		if varint.size() == 9 && varint[8] == 0xFF:
+		if varint.size() == 9 && (varint[8] & 0x80 != 0):
 			varint.append(0x01)
 		return varint
 
@@ -211,44 +211,34 @@ class PBPacker:
 		return bytes
 
 	static func unpack_bytes(bytes : PackedByteArray, index : int, count : int, data_type : int) -> Variant:
-		var value : Variant = 0
 		if data_type == PB_DATA_TYPE.FLOAT:
-			var spb : StreamPeerBuffer = StreamPeerBuffer.new()
-			for i in range(index, count + index):
-				spb.put_u8(bytes[i])
-			spb.seek(0)
-			value = spb.get_float()
+			return bytes.decode_float(index)
 		elif data_type == PB_DATA_TYPE.DOUBLE:
-			var spb : StreamPeerBuffer = StreamPeerBuffer.new()
-			for i in range(index, count + index):
-				spb.put_u8(bytes[i])
-			spb.seek(0)
-			value = spb.get_double()
+			return bytes.decode_double(index)
 		else:
-			for i in range(index + count - 1, index - 1, -1):
-				value |= (bytes[i] & 0xFF)
-				if i != index:
-					value <<= 8
-		return value
+			# Convert to big endian
+			var slice: PackedByteArray = bytes.slice(index, index + count)
+			slice.reverse()
+			return slice
 
 	static func unpack_varint(varint_bytes : PackedByteArray) -> int:
 		var value : int = 0
-		for i in range(varint_bytes.size() - 1, -1, -1):
-			value |= varint_bytes[i] & 0x7F
-			if i != 0:
-				value <<= 7
+		var i: int = varint_bytes.size() - 1
+		while i > -1:
+			value = (value << 7) | (varint_bytes[i] & 0x7F)
+			i -= 1
 		return value
 
 	static func pack_type_tag(type : int, tag : int) -> PackedByteArray:
 		return pack_varint((tag << 3) | type)
 
 	static func isolate_varint(bytes : PackedByteArray, index : int) -> PackedByteArray:
-		var result : PackedByteArray = PackedByteArray()
-		for i in range(index, bytes.size()):
-			result.append(bytes[i])
+		var i: int = index
+		while i <= index + 10: # Protobuf varint max size is 10 bytes
 			if !(bytes[i] & 0x80):
-				break
-		return result
+				return bytes.slice(index, i + 1)
+			i += 1
+		return [] # Unreachable
 
 	static func unpack_type_tag(bytes : PackedByteArray, index : int) -> PBTypeTag:
 		var varint_bytes : PackedByteArray = isolate_varint(bytes, index)
@@ -376,7 +366,20 @@ class PBPacker:
 		else:
 			return data
 
-	static func unpack_field(bytes : PackedByteArray, offset : int, field : PBField, type : int, message_func_ref : Variant) -> int:
+	static func skip_unknown_field(bytes : PackedByteArray, offset : int, type : int) -> int:
+		if type == PB_TYPE.VARINT:
+			return offset + isolate_varint(bytes, offset).size()
+		if type == PB_TYPE.FIX64:
+			return offset + 8
+		if type == PB_TYPE.LENGTHDEL:
+			var length_bytes : PackedByteArray = isolate_varint(bytes, offset)
+			var length : int = unpack_varint(length_bytes)
+			return offset + length_bytes.size() + length
+		if type == PB_TYPE.FIX32:
+			return offset + 4
+		return PB_ERR.UNDEFINED_STATE
+
+	static func unpack_field(bytes : PackedByteArray, offset : int, field : PBField, type : int, message_func_ref: Variant) -> int:
 		if field.rule == PB_RULE.REPEATED && type != PB_TYPE.LENGTHDEL && field.option_packed:
 			var count_bytes := isolate_varint(bytes, offset)
 			if count_bytes.size() > 0:
@@ -476,18 +479,14 @@ class PBPacker:
 							else:
 								return offset
 						elif field.type == PB_DATA_TYPE.STRING:
-							var str_bytes : PackedByteArray = PackedByteArray()
-							for i in range(offset, inner_size + offset):
-								str_bytes.append(bytes[i])
+							var str_bytes : PackedByteArray = bytes.slice(offset, inner_size + offset)
 							if field.rule == PB_RULE.REPEATED:
 								field.value.append(str_bytes.get_string_from_utf8())
 							else:
 								field.value = str_bytes.get_string_from_utf8()
 							return offset + inner_size
 						elif field.type == PB_DATA_TYPE.BYTES:
-							var val_bytes : PackedByteArray = PackedByteArray()
-							for i in range(offset, inner_size + offset):
-								val_bytes.append(bytes[i])
+							var val_bytes : PackedByteArray = bytes.slice(offset, inner_size + offset)
 							if field.rule == PB_RULE.REPEATED:
 								field.value.append(val_bytes)
 							else:
@@ -520,6 +519,18 @@ class PBPacker:
 							return res
 						else:
 							break
+				else:
+					var res : int = skip_unknown_field(bytes, offset, tt.type)
+					if res > 0:
+						offset = res
+						if offset == limit:
+							return offset
+						elif offset > limit:
+							return PB_ERR.PACKAGE_SIZE_MISMATCH
+					elif res < 0:
+						return res
+					else:
+						break							
 			else:
 				return offset
 		return PB_ERR.UNDEFINED_STATE
